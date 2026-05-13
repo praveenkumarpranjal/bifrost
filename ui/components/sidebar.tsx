@@ -819,6 +819,13 @@ export default function AppSidebar() {
             hasAccess: hasMCPGatewayAccess,
           },
           {
+            title: "MCP Library",
+            url: "/workspace/mcp-registry/library",
+            icon: Boxes,
+            description: "Install curated MCP servers",
+            hasAccess: hasMCPGatewayAccess,
+          },
+          {
             title: "Tool Groups",
             url: "/workspace/mcp-tool-groups",
             icon: ToolCase,

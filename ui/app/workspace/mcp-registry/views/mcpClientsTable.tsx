@@ -1,4 +1,5 @@
 import ClientForm from "@/app/workspace/mcp-registry/views/mcpClientForm";
+import { PIN_SHADOW_RIGHT } from "@/components/table/columnPinning";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -12,7 +13,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdownMenu";
-import { PIN_SHADOW_RIGHT } from "@/components/table/columnPinning";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
@@ -20,10 +20,11 @@ import { MCP_STATUS_COLORS } from "@/lib/constants/config";
 import { getErrorMessage, useDeleteMCPClientMutation, useReconnectMCPClientMutation } from "@/lib/store";
 import { MCPClient } from "@/lib/types/mcp";
 import { RbacOperation, RbacResource, useRbac } from "@enterprise/lib";
-import { ChevronLeft, ChevronRight, Loader2, MoreHorizontal, Plus, RefreshCcw, Search, Trash2 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ChevronLeft, ChevronRight, Loader2, MoreHorizontal, PackagePlus, Plus, RefreshCcw, Search, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { MCPServersEmptyState } from "./mcpServersEmptyState";
 import MCPClientSheet from "./mcpClientSheet";
+import { MCPServersEmptyState } from "./mcpServersEmptyState";
 
 interface MCPClientsTableProps {
 	mcpClients: MCPClient[];
@@ -206,16 +207,24 @@ export default function MCPClientsTable({
 					<h2 className="text-lg font-semibold tracking-tight">MCP Server Catalog</h2>
 					<p className="text-muted-foreground text-sm">Manage servers that can connect to the MCP Tools endpoint.</p>
 				</div>
-				<Button
-					onClick={handleCreate}
-					disabled={!hasCreateMCPClientAccess}
-					data-testid="create-mcp-client-btn"
-					aria-label="New MCP Server"
-					className="gap-2"
-				>
-					<Plus className="h-4 w-4" />
-					<span className="hidden sm:inline">New MCP Server</span>
-				</Button>
+				<div className="flex gap-2">
+					<Button asChild variant="outline" data-testid="mcp-library-link-btn">
+						<Link to="/workspace/mcp-registry/library">
+							<PackagePlus className="h-4 w-4" />
+							<span className="hidden sm:inline">Library</span>
+						</Link>
+					</Button>
+					<Button
+						onClick={handleCreate}
+						disabled={!hasCreateMCPClientAccess}
+						data-testid="create-mcp-client-btn"
+						aria-label="New MCP Server"
+						className="gap-2"
+					>
+						<Plus className="h-4 w-4" />
+						<span className="hidden sm:inline">New MCP Server</span>
+					</Button>
+				</div>
 			</div>
 
 			{/* Toolbar: Search */}
