@@ -1,6 +1,7 @@
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
-import react from "@vitejs/plugin-react";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,6 +28,7 @@ export default defineConfig({
 			autoCodeSplitting: true,
 		}),
 		react(),
+		babel({ presets: [reactCompilerPreset()] }),
 		tailwindcss(),
 		checker({
 			typescript: true,
