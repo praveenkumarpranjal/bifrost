@@ -83,7 +83,16 @@ func (h *OAuthHandler) handleOAuthCallback(ctx *fasthttp.RequestCtx) {
 		return
 	}
 	if perUserErr == nil {
-		ctx.Redirect("/workspace/mcp-sessions?completed=1", fasthttp.StatusFound)
+		// Branch on whether the visitor has a dashboard session: admins go
+		// back to the sessions list with full chrome, anonymous temp-token
+		// visitors get the public success page (which renders MinimalShell
+		// and makes no API calls, so it works without a cookie).
+		cookieToken := string(ctx.Request.Header.Cookie("token"))
+		if cookieToken != "" && validateSession(ctx, h.store.ConfigStore, cookieToken) {
+			ctx.Redirect("/workspace/mcp-sessions?completed=1", fasthttp.StatusFound)
+			return
+		}
+		ctx.Redirect("/workspace/mcp-sessions/auth-success", fasthttp.StatusFound)
 		return
 	}
 

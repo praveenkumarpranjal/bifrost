@@ -231,6 +231,21 @@ func (w *PerUserOAuthSweepWorker) sweepExpiredFlows(ctx context.Context) {
 	if n > 0 && w.logger != nil {
 		w.logger.Debug("per-user OAuth flow sweep removed %d expired pending flows", n)
 	}
+	// Sweep temp tokens too. Mint binds ttl = time.Until(flow.expires_at), so
+	// the two sets line up — but the cascade in cleanupFlow only fires on
+	// terminal transitions, not on TTL-expiry-without-callback. This call
+	// catches rows whose owning flow timed out before the user opened the
+	// link, plus any orphans left over by older schema versions.
+	m, err := w.provider.configStore.DeleteExpiredTempTokens(ctx, time.Now())
+	if err != nil {
+		if w.logger != nil {
+			w.logger.Error("temp-token sweep failed: %v", err)
+		}
+		return
+	}
+	if m > 0 && w.logger != nil {
+		w.logger.Debug("temp-token sweep removed %d expired rows", m)
+	}
 }
 
 func (w *PerUserOAuthSweepWorker) sweepOrphanedTokens(ctx context.Context) {

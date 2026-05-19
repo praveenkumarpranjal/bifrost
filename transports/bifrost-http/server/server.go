@@ -23,6 +23,7 @@ import (
 	"github.com/maximhq/bifrost/framework/encrypt"
 	"github.com/maximhq/bifrost/framework/logstore"
 	dynamicPlugins "github.com/maximhq/bifrost/framework/plugins"
+	"github.com/maximhq/bifrost/framework/temptoken"
 	"github.com/maximhq/bifrost/framework/tracing"
 	"github.com/maximhq/bifrost/plugins/governance"
 	"github.com/maximhq/bifrost/plugins/logging"
@@ -137,6 +138,7 @@ type BifrostHTTPServer struct {
 	AuthMiddleware    *handlers.AuthMiddleware
 	TracingMiddleware *handlers.TracingMiddleware
 	WSTicketStore     *handlers.WSTicketStore
+	TempTokens        *temptoken.Service
 
 	wsPool *bfws.Pool
 }
@@ -1450,7 +1452,20 @@ func (s *BifrostHTTPServer) Bootstrap(ctx context.Context) error {
 		// so tickets are verifiable across nodes; otherwise fall back to in-memory.
 		// NewSignedWSTicketStore handles empty key by degrading to in-memory mode.
 		s.WSTicketStore = handlers.NewSignedWSTicketStore(encrypt.Key())
-		s.AuthMiddleware, err = handlers.InitAuthMiddleware(s.Config.ConfigStore, s.WSTicketStore)
+		// Initialize the temp-token service and register all scopes owned by the
+		// handlers package. The service is the seam every "scoped, anonymous,
+		// browser-only" workflow plugs into (currently just the MCP per-user OAuth
+		// auth page — see bifrost/private/temp-tokens.md).
+		s.TempTokens = temptoken.NewService(s.Config.ConfigStore, temptoken.NewRegistry())
+		if regErr := handlers.RegisterTempTokenScopes(s.TempTokens); regErr != nil {
+			return fmt.Errorf("failed to register temp token scopes: %v", regErr)
+		}
+		// Hand the service to the OAuth provider so InitiateUserOAuthFlow mints
+		// a mcp_auth token and embeds it as a URL fragment on the auth-page link.
+		if s.Config.OAuthProvider != nil {
+			s.Config.OAuthProvider.SetTempTokenService(s.TempTokens)
+		}
+		s.AuthMiddleware, err = handlers.InitAuthMiddleware(s.Config.ConfigStore, s.WSTicketStore, s.TempTokens)
 		if err != nil {
 			s.WSTicketStore.Stop()
 			s.WSTicketStore = nil

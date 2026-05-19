@@ -978,6 +978,23 @@ func (m *MockConfigStore) DeleteSession(ctx context.Context, token string) error
 	return nil
 }
 
+// Temp token
+func (m *MockConfigStore) CreateTempToken(ctx context.Context, token *tables.TempToken) error {
+	return nil
+}
+
+func (m *MockConfigStore) GetTempTokenByHash(ctx context.Context, tokenHash string) (*tables.TempToken, error) {
+	return nil, nil
+}
+
+func (m *MockConfigStore) DeleteTempTokensByResourceID(ctx context.Context, scope, resourceID string) (int64, error) {
+	return 0, nil
+}
+
+func (m *MockConfigStore) DeleteExpiredTempTokens(ctx context.Context, before time.Time) (int64, error) {
+	return 0, nil
+}
+
 // Model pricing
 func (m *MockConfigStore) GetModelPrices(ctx context.Context) ([]tables.TableModelPricing, error) {
 	return nil, nil

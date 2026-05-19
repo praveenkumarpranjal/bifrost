@@ -773,6 +773,9 @@ func triggerMigrations(ctx context.Context, db *gorm.DB) error {
 	if err := migrationAddFeatureFlagsTable(ctx, db); err != nil {
 		return err
 	}
+	if err := migrationAddTempTokensTable(ctx, db); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -8352,6 +8355,38 @@ func migrationAddVKAccessProfileIDColumn(ctx context.Context, db *gorm.DB) error
 	}})
 	if err := m.Migrate(); err != nil {
 		return fmt.Errorf("error running add_vk_access_profile_id_column migration: %s", err.Error())
+	}
+	return nil
+}
+
+// migrationAddTempTokensTable creates the temp_tokens table that backs the
+// temptoken service. See bifrost/private/temp-tokens.md.
+func migrationAddTempTokensTable(ctx context.Context, db *gorm.DB) error {
+	m := migrator.New(db, migrator.DefaultOptions, []*migrator.Migration{{
+		ID: "add_temp_tokens_table",
+		Migrate: func(tx *gorm.DB) error {
+			tx = tx.WithContext(ctx)
+			mig := tx.Migrator()
+			if !mig.HasTable(&tables.TempToken{}) {
+				if err := mig.CreateTable(&tables.TempToken{}); err != nil {
+					return fmt.Errorf("failed to create temp_tokens table: %w", err)
+				}
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			tx = tx.WithContext(ctx)
+			mig := tx.Migrator()
+			if mig.HasTable(&tables.TempToken{}) {
+				if err := mig.DropTable(&tables.TempToken{}); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}})
+	if err := m.Migrate(); err != nil {
+		return fmt.Errorf("error running add_temp_tokens_table migration: %s", err.Error())
 	}
 	return nil
 }

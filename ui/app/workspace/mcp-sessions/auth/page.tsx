@@ -12,7 +12,7 @@ import FullPageLoader from "@/components/fullPageLoader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { getErrorMessage, useGetMCPFlowDetailQuery, useStartMCPFlowMutation } from "@/lib/store";
+import { getErrorMessage, useGetMCPFlowDetailQuery, useIsAuthEnabledQuery, useStartMCPFlowMutation } from "@/lib/store";
 import { MCPFlowDetail } from "@/lib/types/mcpSessions";
 import { Link } from "@tanstack/react-router";
 import { ExternalLink, Fingerprint, KeyRound, Loader2, ShieldCheck, UserRound } from "lucide-react";
@@ -47,7 +47,7 @@ export default function MCPSessionsAuthPage() {
 	if (isError || !flow) {
 		const status = (error as { status?: number } | undefined)?.status;
 		if (status === 401) {
-			return <UnauthenticatedView flowId={flowId} />;
+			return <InvalidLinkView />;
 		}
 		if (status === 403) {
 			return (
@@ -242,6 +242,14 @@ function CenteredCard({ children }: { children: React.ReactNode }) {
 }
 
 function SessionsTabLink({ variant = "outline" }: { variant?: "outline" | "ghost" }) {
+	// Hide the link only when the visitor has no dashboard session — for them,
+	// /workspace/mcp-sessions would 401 and bounce to /login. Admins (cookie
+	// present) still see it. ClientLayout already cached this query for the
+	// route, so this is a free hook call.
+	const { data: authState } = useIsAuthEnabledQuery();
+	if (authState?.is_auth_enabled && !authState.has_valid_token) {
+		return null;
+	}
 	return (
 		<Button asChild variant={variant} data-testid="mcp-auth-sessions-tab-link">
 			<Link to="/workspace/mcp-sessions">Open sessions tab</Link>
@@ -249,27 +257,20 @@ function SessionsTabLink({ variant = "outline" }: { variant?: "outline" | "ghost
 	);
 }
 
-// UnauthenticatedView is the 401 fallback: caller is not logged into the
-// dashboard / has no identity in context. Frontend redirects to the dashboard
-// login route with a return param so the user lands back here after signing in.
-//
-// The dashboard-auth-on-but-non-admin-needs-temp-token branch ships in OSS-3
-// alongside the temp-token mint endpoint; this OSS-2 cut just sends the user
-// to /login and lets the existing login flow handle it.
-function UnauthenticatedView({ flowId }: { flowId: string }) {
-	const goto = `/workspace/mcp-sessions/auth?flow=${encodeURIComponent(flowId)}`;
-	const loginURL = `/login?goto=${encodeURIComponent(goto)}`;
+// InvalidLinkView renders when the per-user-flow API returns 401, which now
+// means the caller arrived without either a valid dashboard session or a
+// valid mcp_auth temp token. Most often this is an expired or hand-edited
+// link — the temp token embedded in the URL fragment has aged out or the
+// fragment was dropped along the way. Trigger the original action again to
+// get a fresh URL.
+function InvalidLinkView() {
 	return (
 		<CenteredCard>
-			<h1 className="text-xl font-semibold tracking-tight">Sign in to complete authentication</h1>
+			<h1 className="text-xl font-semibold tracking-tight">This authentication link is no longer valid</h1>
 			<p className="text-muted-foreground mt-2 text-sm">
-				Bifrost needs to know who you are before linking this OAuth credential. You'll be sent back here after signing in.
+				The link may have expired, been used already, or had its short-lived token stripped. Trigger the original action again so a fresh
+				authentication link is created.
 			</p>
-			<div className="mt-6">
-				<Button asChild data-testid="mcp-auth-signin-button">
-					<a href={loginURL}>Sign in</a>
-				</Button>
-			</div>
 		</CenteredCard>
 	);
 }
